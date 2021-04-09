@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -261,7 +262,12 @@ class Table:
 
     def showGraph(self):
         plt.tight_layout()
-        plt.show()
+        # plt.show()
+        self.graphPath = "tmp/graph_{}.png".format(np.random.randint(2**16, 2**32))
+
+        # 保存先のフォルダを作る
+        os.makedirs("./tmp", exist_ok=True)
+        plt.savefig(self.graphPath)
 
         return self
 

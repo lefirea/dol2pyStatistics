@@ -1,9 +1,12 @@
 import os
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import pandas as pd
 from copy import deepcopy
-
+"""
 from matplotlib import rcParams
 rcParams['font.family'] = 'sans-serif'
 rcParams['font.sans-serif'] = ['Hiragino Maru Gothic Pro',
@@ -14,6 +17,7 @@ rcParams['font.sans-serif'] = ['Hiragino Maru Gothic Pro',
                                'IPAPGothic',
                                'VL PGothic',
                                'Noto Sans CJK JP']
+"""
 
 class Table:
     def __init__(self):
@@ -81,7 +85,7 @@ class Table:
         self.table = self.table.sort_values(column, ascending=ascending)
         return self
 
-    def drop_duplicate(self, keep="first"):
+    def dropDuplicate(self, keep="first"):
         self.table = self.table.drop_duplicates(keep=keep)
         return self
 
@@ -201,7 +205,7 @@ class Table:
         index = c.index
         for i, x in zip(index, c):
             new.addRow([i, x])
-
+        
         return new
 
     def freqDist(self, column, bins=None, sort=False):
@@ -263,15 +267,16 @@ class Table:
     def showGraph(self):
         plt.tight_layout()
         # plt.show()
-        self.graphPath = "tmp/graph_{}.png".format(np.random.randint(2**16, 2**32))
+        self.graphPath = "tmp/graph_{}.png".format(np.random.randint(2**16, 2**31))
 
         # 保存先のフォルダを作る
         os.makedirs("./tmp", exist_ok=True)
         plt.savefig(self.graphPath)
+        plt.close()
 
         return self
 
-    def plotBar(self, columns=None, stacked=False):
+    def plotBar(self, columns=None, stacked=False, ylabel=None, xlabel=None, step=None):
         plt.cla()
         new = Table()
         new.table = deepcopy(self.table)
@@ -285,34 +290,69 @@ class Table:
             s.plot.bar(stacked=stacked)
         else:
             if columns is not None:
-                isListColumn = False
-                new.table = new.table.T
-                if isinstance(columns, list):
-                    c = columns[0]
-                    isListColumn = True
+                if columns[0] == "":
+                    index = list(new.table[""])
+                    _new = Table()
+                    _new = new.extractColumn(new.table.columns.tolist()[1:])
+                    _new.table.index = index
+                    _new.table.plot.bar(stacked=stacked)
+                    plt.xticks([x for x in range(len(index))], index)
                 else:
-                    c = columns
+                    isListColumn = False
+                    if isinstance(columns, list):
+                        c = columns[0]
+                        isListColumn = True
+                    else:
+                        c = columns
 
-                if c in new.table.columns.tolist():
-                    new.table = new.table[columns]
-                elif c in new.table.index.tolist():
-                    new.table = new.table.T
-                    new.table = new.table[columns]
+                    if c in new.table.columns.tolist():
+                        if not stacked:
+                            index = new.table[""]  # このindex関係でバグがありそう
+                        new.table = new.table[columns]
+                    elif c in new.table.index.tolist():
+                        new.table = new.table.T
+                        new.table = new.table[columns]
 
-                if not isListColumn:
-                    new.table = pd.DataFrame(new.table).T
-
-            new.table.plot.bar(stacked=stacked)
+                    if not isListColumn:
+                        new.table = pd.DataFrame(new.table).T
+                    elif stacked:
+                        new.table = new.table.T
+                    
+                    if "" in new.table.columns.tolist():
+                        index = list(new.table[""])
+                    elif not stacked:
+                        pass
+                        # index = list(new.table[""])
+                    else:
+                        index = new.table.index.tolist()
+                    
+                    # print(index)
+                    
+                    new.table.plot.bar(stacked=stacked)
+                    plt.xticks([x for x in range(len(index))], index)
+        
+        if ylabel is not None:
+            plt.ylabel(ylabel)
+        if xlabel is not None:
+            plt.xlabel(xlabel)
+        
+        if step is not None:
+            ax = plt.gca()
+            yMin, yMax = ax.get_ylim()
+            # count = len(np.arange(yMin, yMax, step))
+            # ax.yaxis.set_major_locator(ticker.LinearLocator(count))
+            ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(yMin, yMax, step)))
+        
         # plt.tight_layout()
         # plt.show()
-
+        
         return new
 
-    def plotBarWithStack(self, columns=None):
-        new = self.plotBar(columns, stacked=True)
+    def plotBarWithStack(self, columns=None, ylabel=None, xlabel=None, step=None):
+        new = self.plotBar(columns, stacked=True, ylabel=ylabel, xlabel=xlabel, step=step)
         return new
 
-    def plotHistGram(self, column, barWidth=0.97):
+    def plotHistGram(self, column, barWidth=0.97, ylabel=None, xlabel=None, step=None):
         plt.cla()
         table = self.freqDist(column).table
         table.plot.bar(width=barWidth)
@@ -322,12 +362,24 @@ class Table:
         # plt.tight_layout()
         plt.grid(axis="y")
         plt.legend().remove()
+        
+        if ylabel is not None:
+            plt.ylabel(ylabel)
+        if xlabel is not None:
+            plt.xlabel(xlabel)
+        
+        if step is not None:
+            ax = plt.gca()
+            yMin, yMax = ax.get_ylim()
+            # count = len(np.arange(yMin, yMax, step))
+            # ax.yaxis.set_major_locator(ticker.LinearLocator(count))
+            ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(yMin, yMax, step)))
 
         # plt.show()
 
         return self
 
-    def plotScatter(self, columns, showGrid=True):
+    def plotScatter(self, columns, showGrid=True, ylabel=None, xlabel=None, step=None):
         plt.cla()
         table = self.table[columns]
 
@@ -340,12 +392,25 @@ class Table:
         if showGrid:
             plt.grid()
 
+        if ylabel is not None:
+            plt.ylabel(ylabel)
+        if xlabel is not None:
+            plt.xlabel(xlabel)
+        
+        if step is not None:
+            ax = plt.gca()
+            yMin, yMax = ax.get_ylim()
+            # count = len(np.arange(yMin, yMax, step))
+            # ax.yaxis.set_major_locator(ticker.LinearLocator(count))
+            ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(yMin, yMax, step)))
+            
+        
         # plt.tight_layout()
         # plt.show()
 
         return self
 
-    def plotPie(self, column):
+    def plotPie(self, column, legend, ylabel=None, xlabel=None):
         plt.cla()
         table = self.table[column]
 
@@ -355,36 +420,74 @@ class Table:
             percentage.append("{:.1f}%".format(x / s * 100))
 
         plt.pie(table, startangle=90, labels=percentage)
-        plt.legend(table.index.tolist(), bbox_to_anchor=(0.9, 0.7))
+        # plt.legend(table.index.tolist(), bbox_to_anchor=(0.9, 0.7))
+        plt.legend(legend, bbox_to_anchor=(0.9, 0.7))
         # plt.tight_layout()
         # plt.show()
+        
+        if ylabel is not None:
+            plt.ylabel(ylabel)
+        if xlabel is not None:
+            plt.xlabel(xlabel)
 
         return self
 
-    def plotBelt(self, columns=None):
+    def plotBelt(self, columns=None, legend=None, ylabel=None, xlabel=None, step=None):
         plt.cla()
         if columns is None:
             columns = self.table.columns.tolist()
             table = self.table
 
             for c in columns:
+                print(table[c])
                 table[c] = table[c] / table[c].sum()
             table = table.T
-            table.plot.barh(stacked=True)
+            ax = table.plot.barh(stacked=True)
         else:
             table = self.table[columns]
 
             for c in columns:
                 table[c] = table[c] / table[c].sum()
 
-            table.T.plot.barh(stacked=True)
+            ax = table.T.plot.barh(stacked=True)
 
         plt.grid(axis="x")
+        plt.legend(legend)
         plt.tight_layout()
+        
+        print(table.shape)
+        rec = ax.patches
+        x = [0, 0]
+        for i in range(len(rec) // table.shape[1]):
+            for j in range(table.shape[1]):
+                height = rec[i + j].get_height()
+                if i != 0 and table.shape[1] != 1:
+                    j = j if i % 2 == 0 else int(not j)
+                    pass
+                ax.text(x[j] + table.iloc[i, j] / 2,
+                        # j + ((i % 2 * 2 - 1) / 6),  # 数値を上下にずらして表示させる（そっちの方が見やすいかなって……）
+                        j,
+                        "{:.1f}%".format(table.iloc[i, j] * 100),
+                        ha="center",
+                        va="bottom"
+                )
+                x[j] += table.iloc[i, j]
+        
+        if ylabel is not None:
+            plt.ylabel(ylabel)
+        if xlabel is not None:
+            plt.xlabel(xlabel)
+        
+        if step is not None:
+            ax = plt.gca()
+            xMin, xMax = ax.get_xlim()
+            # count = len(np.arange(yMin, yMax, step))
+            # ax.yaxis.set_major_locator(ticker.LinearLocator(count))
+            ax.xaxis.set_major_locator(ticker.FixedLocator(np.arange(xMin, xMax, step)))
 
         return self
 
-    def plotBox(self, columns):
+    def plotBox(self, columns, ylabel=None, xlabel=None, step=None):
         plt.cla()
         table = self.table[columns]
         print(columns)
@@ -394,6 +497,18 @@ class Table:
         plt.xlabel(columns[0])
         plt.ylabel(columns[1])
         plt.grid(axis="y")
+        
+        if ylabel is not None:
+            plt.ylabel(ylabel)
+        if xlabel is not None:
+            plt.xlabel(xlabel)
+        
+        if step is not None:
+            ax = plt.gca()
+            yMin, yMax = ax.get_ylim()
+            count = len(np.arange(yMin, yMax, step))
+            ax.yaxis.set_major_locator(ticker.LinearLocator(count))
+            ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(yMin, yMax, step)))
 
         return self
 

@@ -11,3 +11,5 @@ https://dolittle.eplang.jp/ch_stat33
 Python3.8.5
 
 pip3　20.0.2
+
+```sudo python3 main.py```で起動する
